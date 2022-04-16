@@ -6,7 +6,8 @@ import numpy as np
 from scripts.normalize_data import (
     remove_bracket_text,
     remove_whitespace,
-    normalize_columns
+    normalize_columns,
+    normalize_expedition_section_cols
 )
 
 class TestRemoveBracketText:
@@ -142,3 +143,159 @@ class TestNormalizeColumns:
         normalize_columns(df, columns_mapping)
 
         assert_frame_equal(df, expected)
+
+
+class TestNormalizeExpeditionSectionCols:
+    def test_dataframe_does_not_change_if_expection_section_columns_exist(self):
+        data = {
+            "Col": [0, 1],
+            "Exp": ["1", "10"],
+            "Site": ["U1", "U2"],
+            "Hole": ["h", "H"],
+            "Core": ["2", "20"],
+            "Type": ["t", "T"],
+            "Section": ["3", "3"],
+            "A/W": ["a", "A"],
+        }
+        df = pd.DataFrame(data)
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_dataframe_does_not_change_if_expection_section_Sample_exist(self):
+        data = {
+            "Col": [0, 1],
+            "Sample": ["1-U1h-2t-3-a", "10-U2H-20T-3-A"],
+            "Exp": ["1", "10"],
+            "Site": ["U1", "U2"],
+            "Hole": ["h", "H"],
+            "Core": ["2", "20"],
+            "Type": ["t", "T"],
+            "Section": ["3", "3"],
+            "A/W": ["a", "A"],
+        }
+        df = pd.DataFrame(data)
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_dataframe_does_not_change_if_expection_section_Label_exist(self):
+        data = {
+            "Col": [0, 1],
+            "Label ID": ["1-U1h-2t-3-a", "10-U2H-20T-3-A"],
+            "Exp": ["1", "10"],
+            "Site": ["U1", "U2"],
+            "Hole": ["h", "H"],
+            "Core": ["2", "20"],
+            "Type": ["t", "T"],
+            "Section": ["3", "3"],
+            "A/W": ["a", "A"],
+        }
+        df = pd.DataFrame(data)
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_adds_missing_expection_section_using_Label(self):
+        data = {
+            "Col": [0, 1],
+            "Label ID": ["1-U1h-2t-3-a", "10-U2H-20T-3-A"],
+        }
+        df = pd.DataFrame(data)
+
+        data = {
+            "Col": [0, 1],
+            "Label ID": ["1-U1h-2t-3-a", "10-U2H-20T-3-A"],
+            "Exp": ["1", "10"],
+            "Site": ["U1", "U2"],
+            "Hole": ["h", "H"],
+            "Core": ["2", "20"],
+            "Type": ["t", "T"],
+            "Section": ["3", "3"],
+            "A/W": ["a", "A"],
+        }
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_adds_missing_expection_section_using_Sample(self):
+        data = {
+            "Col": [0, 1],
+            "Sample": ["1-U1h-2t-3-a", "10-U2H-20T-3-A"],
+        }
+        df = pd.DataFrame(data)
+
+        data = {
+            "Col": [0, 1],
+            "Sample": ["1-U1h-2t-3-a", "10-U2H-20T-3-A"],
+            "Exp": ["1", "10"],
+            "Site": ["U1", "U2"],
+            "Hole": ["h", "H"],
+            "Core": ["2", "20"],
+            "Type": ["t", "T"],
+            "Section": ["3", "3"],
+            "A/W": ["a", "A"],
+        }
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_handles_missing_aw_col(self):
+        data = {
+            "Col": [0, 1],
+            "Sample": ["1-U1h-2t-3", "10-U2H-20T-3"],
+            "Exp": ["1", "10"],
+            "Site": ["U1", "U2"],
+            "Hole": ["h", "H"],
+            "Core": ["2", "20"],
+            "Type": ["t", "T"],
+            "Section": ["3", "3"],
+        }
+        df = pd.DataFrame(data)
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_handles_no_data(self):
+        data = {
+            "Col": [0],
+            "Sample": ["No data this hole"],
+        }
+        df = pd.DataFrame(data)
+
+        data = {
+            "Col": [0],
+            "Sample": ["No data this hole"],
+            "Exp": [None],
+            "Site": [None],
+            "Hole": [None],
+            "Core": [None],
+            "Type": [None],
+            "Section": [None],
+            "A/W": [None],
+        }
+        expected = pd.DataFrame(data)
+
+        df = normalize_expedition_section_cols(df)
+
+        assert_frame_equal(df, expected)
+
+    def test_otherwise_raise_error(self):
+        df = pd.DataFrame({"foo": [1]})
+
+        message = "File does not have the expected columns."
+        with pytest.raises(ValueError, match=message):
+            normalize_expedition_section_cols(df)
+

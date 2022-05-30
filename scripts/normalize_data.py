@@ -4,19 +4,25 @@ import numpy as np
 
 
 def remove_bracket_text(df):
-    """remove trailing text inside brackets."""
+    """remove trailing text inside brackets.
+
+    example: '1 [notes]' becomes '1'."""
     df.replace(r" *\[.*\] *$", "", regex=True, inplace=True)
     return df
 
 
 def remove_whitespace(df):
-    """remove leading and trailing spaces from dataframe rows"""
+    """remove leading and trailing whitespaces from dataframe.
+
+    example: ' abc ' becomes 'abc'."""
     for col in df.columns:
         # only process string columns
         if df[col].dtype == "object":
             if len(df[df[col].isna()]) > 0:
+                # convert NaN to empty strings
                 df[col].fillna("", inplace=True)
             try:
+                # remove leading and trailing whitespaces
                 df[col] = df[col].map(str.strip)
             except TypeError:
                 print('Must call fillna("") before using whitespace_remover.')
@@ -28,19 +34,24 @@ def print_df(df, num_rows=5):
 
 
 def normalize_columns(df, columns_mapping):
-    """Replace variations of column name with a standard column name"""
-    temp = {}
+    """Replace variations of column name with a standard column name
+
+    example: columns_mapping = {'bottom': 'Bottom', 'BOTTOM': 'Bottom'}
+    'bottom' and 'BOTTOM' columns are renamed 'Bottom'."""
+    changed_columns = {}
     for col in df.columns:
+        # if dataframe column name is in columns_mapping
         if col in columns_mapping:
+            # set the new column name using the value from columns_mapping
             value = columns_mapping[col]
-            if value and value == value:
-                temp[col] = value
+            if value and pd.notna(value):
+                changed_columns[col] = value
 
-    if len(temp) > 0:
-        df.rename(columns=temp, inplace=True)
+    if len(changed_columns) > 0:
+        df.rename(columns=changed_columns, inplace=True)
 
 
-
+# valid formats for Sample names
 # HACK: (@)? are meaningless matches so each regex has 7 capture groups
 # (1)-(U1)(A)
 # (Exp)-(Site)(Hole)
@@ -67,11 +78,17 @@ invalid_sample_regex = r"(-)?(-)?(-)?(-)?(-)?(-)?(-)?"
 
 
 def normalize_expedition_section_cols(df):
-    """Create Exp...Section columns using Sample or Label ID"""
-    # NOTE: There was one file that did not have A/W column
-    names = {"Exp", "Site", "Hole", "Core", "Type", "Section"}
-    if names.issubset(df.columns):
+    """Create Exp, Site, Hole, Core, Type, Section, A/W columns using Sample
+    column.
+
+    example:
+    Sample: 363-U1483A-1H-2-W
+    becomes Exp: 363, Site: U1483, Hole: A, Core: 1, Type: H, Section: 2, A/W: W"""
+    columns = {"Exp", "Site", "Hole", "Core", "Type", "Section"}
+    # if all the columns are present, do nothing
+    if columns.issubset(df.columns):
         pass
+    # if columns are missing, add columns to dataframe
     elif "Sample" in df.columns:
         df = df.join(_create_sample_cols(df["Sample"]))
     elif "Label ID" in df.columns:
@@ -81,6 +98,7 @@ def normalize_expedition_section_cols(df):
     return df
 
 def _extract_sample_parts(name):
+    """Use regex to separate sample name into Exp, Site, Hole, Core, Type, Section, A/W """
     if isinstance(name, str):
         name = re.sub(r"-#\d*", "", name)
 
@@ -105,6 +123,7 @@ def _extract_sample_parts(name):
 
 
 def _valid_sample_value(name):
+    """check if sample name matches one of the expected formats."""
     if isinstance(name, str):
         name = re.sub(r"-#\d*", "", name)
 
@@ -127,27 +146,19 @@ def _valid_sample_value(name):
     elif re.search(sample_aw_regex, name):
         return True
     else:
-        # print("bad", name)
         return False
 
 
-def _create_sample_cols(series):
-    """Extract Exp...A/W info from a panda series"""
-    df = pd.DataFrame(
-        {
-            "Exp": [],
-            "Site": [],
-            "Hole": [],
-            "Core": [],
-            "Type": [],
-            "Section": [],
-            "A/W": [],
-        }
-    )
+def _create_sample_cols(column):
+    """Create data frame with Exp, Site, Hole, Core, Type, Section, A/W columns."""
+    # raise error is one of the values in the column has invalid format
+    if not all([_valid_sample_value(x) for x in column]):
+        raise ValueError("Sample name uses wrong format.")
 
-    for item in series.to_list():
-        parts = _extract_sample_parts(item)
-        parts_dict = {
+    rows = []
+    for sample_name in column.values:
+        parts = _extract_sample_parts(sample_name)
+        rows.append({
             "Exp": parts[0],
             "Site": parts[1],
             "Hole": parts[2],
@@ -155,11 +166,6 @@ def _create_sample_cols(series):
             "Type": parts[4],
             "Section": parts[5],
             "A/W": parts[6],
-        }
-        temp = pd.DataFrame([parts_dict])
-        df = pd.concat([df, temp], ignore_index=True)
+        })
 
-    if not all([_valid_sample_value(x) for x in series]):
-        raise ValueError("Sample name uses wrong format.")
-
-    return df
+    return pd.DataFrame(rows)

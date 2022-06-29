@@ -1,0 +1,17 @@
+{
+    "title": "Data Cleaning with Pandas and Jupyter Notebooks",
+    "creators": [
+        {
+            "name": "Wai-Yin Kwan",
+            "affiliation": "Whirl-i-Gig",
+            "email": "wyk@whirl-i-gig.com",
+            "orcid": "0000-0001-6113-0210"
+        }
+    ],
+    "keywords": [
+        "data cleaning",
+        "reproducibility",
+        "version control",
+        "testing"
+    ]
+}
